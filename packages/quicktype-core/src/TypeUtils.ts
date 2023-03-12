@@ -50,12 +50,14 @@ export function setOperationMembersRecursively<T extends SetOperationType>(
 ): [ReadonlySet<Type>, TypeAttributes] {
     const setOperations = Array.isArray(oneOrMany) ? oneOrMany : [oneOrMany];
     const kind = setOperations[0].kind;
+    // console.log("setOperationMembersRecursively", kind);
     const includeAny = kind !== "intersection";
     const processedSetOperations = new Set<T>();
     const members = new Set<Type>();
     let attributes = emptyTypeAttributes;
 
     function process(t: Type): void {
+        // console.log("process", t.kind);
         if (t.kind === kind) {
             const so = t as T;
             if (processedSetOperations.has(so)) return;
@@ -105,9 +107,13 @@ export function makeGroupsToFlatten<T extends SetOperationType>(
                 maybeSet.add(defined(iterableFirst(members)));
             }
         }
+        if (u.debugPrintKind === "union") {
+            console.log("/makeGroupsToFlatten", members, "u:", u);
+        }
         maybeSet.add(u);
         typeGroups.set(members, maybeSet);
     }
+    console.log("//makeGroupsToFlatten", typeGroups.values());
 
     return Array.from(typeGroups.values()).map(ts => Array.from(ts));
 }
