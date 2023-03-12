@@ -23,7 +23,7 @@ export abstract class JSONSchemaStore {
         }
         try {
             schema = await this.fetch(address);
-        } catch {}
+        } catch { }
         if (schema === undefined) {
             if (debugPrint) {
                 console.log(`couldn't fetch ${address}`);

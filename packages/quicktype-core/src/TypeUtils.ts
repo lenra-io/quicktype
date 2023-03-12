@@ -89,6 +89,9 @@ export function makeGroupsToFlatten<T extends SetOperationType>(
     for (const u of setOperations) {
         // FIXME: We shouldn't have to make a new set here once we got rid
         // of immutable.
+        if (u.debugPrintKind === "union") {
+            console.log("makeGroupsToFlatten", u);
+        }
         const members = new Set(setOperationMembersRecursively(u, undefined)[0]);
 
         if (include !== undefined) {

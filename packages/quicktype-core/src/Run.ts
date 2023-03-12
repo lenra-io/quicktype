@@ -257,6 +257,7 @@ class Run implements RunContext {
     }
 
     async timeSync<T>(name: string, f: () => Promise<T>): Promise<T> {
+        console.log("timeSync");
         const start = Date.now();
         const result = await f();
         const end = Date.now();
@@ -277,6 +278,7 @@ class Run implements RunContext {
     }
 
     private makeGraphInputs(): GraphInputs {
+        console.log("makeGraphInputs");
         const targetLanguage = getTargetLanguage(this._options.lang);
         const stringTypeMapping = this.stringTypeMapping;
         const conflateNumbers = !targetLanguage.supportsUnionsWithBothNumberTypes;
@@ -293,6 +295,7 @@ class Run implements RunContext {
     }
 
     private async makeGraph(allInputs: InputData): Promise<TypeGraph> {
+        console.log("makeGraph");
         const graphInputs = this.makeGraphInputs();
 
         await this.timeSync(
@@ -327,6 +330,7 @@ class Run implements RunContext {
     }
 
     private processGraph(allInputs: InputData, graphInputs: GraphInputs): TypeGraph {
+        console.log("processGraph");
         const { targetLanguage, stringTypeMapping, conflateNumbers, typeBuilder } = graphInputs;
 
         let graph = typeBuilder.finish();
@@ -353,24 +357,24 @@ class Run implements RunContext {
                     this.time(
                         "resolve intersections",
                         () =>
-                            ([graph, intersectionsDone] = resolveIntersections(
-                                graph,
-                                stringTypeMapping,
-                                debugPrintReconstitution
-                            ))
+                        ([graph, intersectionsDone] = resolveIntersections(
+                            graph,
+                            stringTypeMapping,
+                            debugPrintReconstitution
+                        ))
                     );
                 }
                 if (!unionsDone) {
                     this.time(
                         "flatten unions",
                         () =>
-                            ([graph, unionsDone] = flattenUnions(
-                                graph,
-                                stringTypeMapping,
-                                conflateNumbers,
-                                true,
-                                debugPrintReconstitution
-                            ))
+                        ([graph, unionsDone] = flattenUnions(
+                            graph,
+                            stringTypeMapping,
+                            conflateNumbers,
+                            true,
+                            debugPrintReconstitution
+                        ))
                     );
                 }
 
@@ -383,25 +387,25 @@ class Run implements RunContext {
         this.time(
             "replace object type",
             () =>
-                (graph = replaceObjectType(
-                    graph,
-                    stringTypeMapping,
-                    conflateNumbers,
-                    targetLanguage.supportsFullObjectType,
-                    debugPrintReconstitution
-                ))
+            (graph = replaceObjectType(
+                graph,
+                stringTypeMapping,
+                conflateNumbers,
+                targetLanguage.supportsFullObjectType,
+                debugPrintReconstitution
+            ))
         );
         do {
             this.time(
                 "flatten unions",
                 () =>
-                    ([graph, unionsDone] = flattenUnions(
-                        graph,
-                        stringTypeMapping,
-                        conflateNumbers,
-                        false,
-                        debugPrintReconstitution
-                    ))
+                ([graph, unionsDone] = flattenUnions(
+                    graph,
+                    stringTypeMapping,
+                    conflateNumbers,
+                    false,
+                    debugPrintReconstitution
+                ))
             );
         } while (!unionsDone);
 
@@ -415,20 +419,20 @@ class Run implements RunContext {
                 this.time(
                     "combine classes cleanup",
                     () =>
-                        (graph = combineClasses(
-                            this,
-                            combinedGraph,
-                            this._options.alphabetizeProperties,
-                            false,
-                            true,
-                            debugPrintReconstitution
-                        ))
+                    (graph = combineClasses(
+                        this,
+                        combinedGraph,
+                        this._options.alphabetizeProperties,
+                        false,
+                        true,
+                        debugPrintReconstitution
+                    ))
                 );
             }
         }
 
         if (this._options.inferMaps) {
-            for (;;) {
+            for (; ;) {
                 const newGraph = this.time("infer maps", () =>
                     inferMaps(graph, stringTypeMapping, true, debugPrintReconstitution)
                 );
@@ -444,13 +448,13 @@ class Run implements RunContext {
         this.time(
             "flatten unions",
             () =>
-                ([graph, unionsDone] = flattenUnions(
-                    graph,
-                    stringTypeMapping,
-                    conflateNumbers,
-                    false,
-                    debugPrintReconstitution
-                ))
+            ([graph, unionsDone] = flattenUnions(
+                graph,
+                stringTypeMapping,
+                conflateNumbers,
+                false,
+                debugPrintReconstitution
+            ))
         );
         assert(unionsDone, "We should only have to flatten unions once after expanding strings");
 
@@ -476,13 +480,13 @@ class Run implements RunContext {
         this.time(
             "flatten unions",
             () =>
-                ([graph, unionsDone] = flattenUnions(
-                    graph,
-                    stringTypeMapping,
-                    conflateNumbers,
-                    false,
-                    debugPrintReconstitution
-                ))
+            ([graph, unionsDone] = flattenUnions(
+                graph,
+                stringTypeMapping,
+                conflateNumbers,
+                false,
+                debugPrintReconstitution
+            ))
         );
         assert(unionsDone, "We should only have to flatten unions once after making transformations");
 
@@ -538,6 +542,7 @@ class Run implements RunContext {
     }
 
     async run(): Promise<MultiFileRenderResult> {
+        console.log("Run");
         const preRunResult = this.preRun();
         if (!Array.isArray(preRunResult)) {
             return preRunResult;

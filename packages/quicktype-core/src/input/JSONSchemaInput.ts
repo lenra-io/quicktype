@@ -219,7 +219,7 @@ export class Ref {
     get name(): string {
         const path = Array.from(this.path);
 
-        for (;;) {
+        for (; ;) {
             const e = path.pop();
             if (e === undefined || e.kind === PathElementKind.Root) {
                 let name = this.addressURI !== undefined ? this.addressURI.filename() : "";
@@ -388,7 +388,7 @@ class Canonizer {
     private readonly _map = new EqualityMap<Ref, Location>();
     private readonly _schemaAddressesAdded = new Set<string>();
 
-    constructor(private readonly _ctx: RunContext) {}
+    constructor(private readonly _ctx: RunContext) { }
 
     private addIDs(schema: any, loc: Location) {
         if (schema === null) return;
@@ -525,7 +525,7 @@ class Resolver {
         private readonly _ctx: RunContext,
         private readonly _store: JSONSchemaStore,
         private readonly _canonizer: Canonizer
-    ) {}
+    ) { }
 
     private async tryResolveVirtualRef(
         fetchBase: Location,
@@ -537,7 +537,7 @@ class Resolver {
         // we don't know its $id mapping yet, which means we don't know where we
         // will end up.  What we do if we encounter a new schema is add all its
         // IDs first, and then try to canonize again.
-        for (;;) {
+        for (; ;) {
             const loc = this._canonizer.canonize(fetchBase, virtualRef);
             const canonical = loc.canonicalRef;
             assert(canonical.hasAddress, "Canonical ref can't be resolved without an address");
@@ -870,28 +870,42 @@ async function addTypesInSchema(
         const intersectionType = typeBuilder.getUniqueIntersectionType(typeAttributes, undefined);
         setTypeForLocation(loc, intersectionType);
 
-        async function convertOneOrAnyOf(cases: any, kind: string): Promise<TypeRef> {
+        async function convertAnyOf(cases: any, kind: string): Promise<TypeRef> {
             const typeRefs = await makeTypesFromCases(cases, kind);
             let unionAttributes = makeTypeAttributesInferred(typeAttributes);
-            if (kind === "oneOf") {
-                forEachProducedAttribute(cases as JSONSchema[], ({ forType, forUnion, forCases }) => {
-                    if (forType !== undefined) {
-                        typeBuilder.addAttributes(intersectionType, forType);
+            const unionType = typeBuilder.getUniqueUnionType(unionAttributes, undefined);
+            typeBuilder.setSetOperationMembers(unionType, new Set(typeRefs));
+            return unionType;
+        }
+
+        async function convertOneOf(cases: any, _kind: string): Promise<TypeRef> {
+            const kindLoc = loc.push("oneOf");
+            const typeRefs = await arrayMapSync(cases, async (t, index) => {
+                const caseLoc = kindLoc.push(index.toString());
+                return await toType(
+                    checkJSONSchema(t, caseLoc.canonicalRef),
+                    caseLoc,
+                    singularizeTypeNames(typeAttributes)
+                );
+            });
+            let unionAttributes = makeTypeAttributesInferred(typeAttributes);
+            forEachProducedAttribute(cases as JSONSchema[], ({ forType, forUnion, forCases }) => {
+                if (forType !== undefined) {
+                    typeBuilder.addAttributes(intersectionType, forType);
+                }
+                if (forUnion !== undefined) {
+                    unionAttributes = combineTypeAttributes("union", unionAttributes, forUnion);
+                }
+                if (forCases !== undefined) {
+                    assert(
+                        forCases.length === typeRefs.length,
+                        "Number of case attributes doesn't match number of cases"
+                    );
+                    for (let i = 0; i < typeRefs.length; i++) {
+                        typeBuilder.addAttributes(typeRefs[i], forCases[i]);
                     }
-                    if (forUnion !== undefined) {
-                        unionAttributes = combineTypeAttributes("union", unionAttributes, forUnion);
-                    }
-                    if (forCases !== undefined) {
-                        assert(
-                            forCases.length === typeRefs.length,
-                            "Number of case attributes doesn't match number of cases"
-                        );
-                        for (let i = 0; i < typeRefs.length; i++) {
-                            typeBuilder.addAttributes(typeRefs[i], forCases[i]);
-                        }
-                    }
-                });
-            }
+                }
+            });
             const unionType = typeBuilder.getUniqueUnionType(unionAttributes, undefined);
             typeBuilder.setSetOperationMembers(unionType, new Set(typeRefs));
             return unionType;
@@ -970,10 +984,10 @@ async function addTypesInSchema(
             types.push(...(await makeTypesFromCases(schema.allOf, "allOf")));
         }
         if (schema.oneOf !== undefined) {
-            types.push(await convertOneOrAnyOf(schema.oneOf, "oneOf"));
+            types.push(await convertOneOf(schema.oneOf, "oneOf"));
         }
         if (schema.anyOf !== undefined) {
-            types.push(await convertOneOrAnyOf(schema.anyOf, "anyOf"));
+            types.push(await convertAnyOf(schema.anyOf, "anyOf"));
         }
 
         typeBuilder.setSetOperationMembers(intersectionType, new Set(types));
@@ -1137,6 +1151,7 @@ export class JSONSchemaInput implements Input<JSONSchemaSourceData> {
     }
 
     async addTypes(ctx: RunContext, typeBuilder: TypeBuilder): Promise<void> {
+        console.log("addTypes");
         if (this._schemaSources.length === 0) return;
 
         let maybeSchemaStore = this._schemaStore;
@@ -1161,9 +1176,11 @@ export class JSONSchemaInput implements Input<JSONSchemaSourceData> {
         const resolver = new Resolver(ctx, defined(this._schemaStore), canonizer);
 
         for (const [normalizedURI, source] of this._schemaSources) {
+            console.log("source", normalizedURI, source);
             const givenName = source.name;
 
             const refs = await refsInSchemaForURI(resolver, normalizedURI, givenName);
+            console.log("refs", refs);
             if (Array.isArray(refs)) {
                 let name: string;
                 if (this._schemaSources.length === 1 && givenName) {

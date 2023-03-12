@@ -49,6 +49,7 @@ export function flattenUnions(
         foundIntersection = true;
         return false;
     });
+    console.log("groups", groups);
     graph = graph.rewrite("flatten unions", stringTypeMapping, false, groups, debugPrintReconstitution, replace);
 
     // console.log(`flattened ${nonCanonicalUnions.size} of ${unions.size} unions`);
